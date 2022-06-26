@@ -1,13 +1,18 @@
-from requests import get
 import os, re
 import youtube_dl
 import spotipy
+import socket
+import bson
 from spotipy.oauth2 import SpotifyOAuth
+from requests import get
 
 url = input("URL: ")
 digits = int(input("Digits of number: "))
 track_info = []
 failed = []
+output = {}
+hostname = socket.gethostname()
+ip_address = socket.gethostbyname(hostname)
 
 if not os.path.exists("output"):
     os.mkdir("output")
@@ -154,6 +159,33 @@ def download_favourites_spotify():
         print('\n'.join(failed))
         open("failed.txt", "w").write('\n'.join(failed))
 
+def peertopeer_folder_server(url):
+    os.chdir(url)
+    bson.patch_socket()
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        print(f"IP Address for client: {ip_address}")
+        s.bind(("0.0.0.0", 2468))
+        s.listen()
+        conn, addr = s.accept()
+        with conn:
+            data = {}
+            print(f"Connected by {addr[0]}")
+            for file in os.listdir():
+                if file == ".cache" or file == "failed.txt":
+                    pass
+                else:
+                    data[file] = open(file, "rb").read()
+            conn.sendobj(data)
+
+def peertopeer_folder_client(url):
+    os.chdir(url)
+    bson.patch_socket()
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((input("IP of Server: "), 2468))
+        data = s.recvobj()
+        for file in data:
+            print("Current file:", file)
+            open(file, "wb").write(data[file])
 
 code = input("Command: ")
 if code == "down_pl_spot":
@@ -164,3 +196,7 @@ elif code == "down_fav_spot":
     download_favourites_spotify()
 elif code == "del_out":
     delete_output()
+elif code == "p2p_folder_s":
+    peertopeer_folder_server(url)
+elif code == "p2p_folder_c":
+    peertopeer_folder_client(url)
