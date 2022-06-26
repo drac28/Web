@@ -6,8 +6,11 @@ from spotipy.oauth2 import SpotifyOAuth
 
 url = input("URL: ")
 digits = int(input("Digits of number: "))
-track_names = []
 track_info = []
+failed = []
+
+if not os.path.exists("output"):
+    os.mkdir("output")
 
 def delete_output():
     for file in os.listdir("output"):
@@ -47,7 +50,6 @@ def show_tracks(results):
             "   %d %32.32s %s" %
             (i, track['artists'][0]['name'], track['name']))
         track_info.append([track['artists'][0]['name'], track['name']])
-        track_names.append(f"ytsearch:{track['artists'][0]['name']} {track['name']}")
 
 def download_playlist_spotify(url):
     ydl_opts = {
@@ -67,6 +69,12 @@ def download_playlist_spotify(url):
         scope=scope
     ))
     os.chdir("output")
+    try:
+        for failed_track in open("failed.txt").read().split("\n"):
+            failed_info = failed_track.split(" - ")
+            track_info.append(failed_info)
+    except:
+        print("No failed songs were added")
     results = sp.playlist(url, fields="tracks,next")
     tracks = results['tracks']
     show_tracks(tracks)
@@ -74,14 +82,26 @@ def download_playlist_spotify(url):
     while tracks['next']:
         tracks = sp.next(tracks)
         show_tracks(tracks)
+
+    print(track_info)
     
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        ydl.download(track_names)
-
-    for file in os.listdir():
         for track in track_info:
-            if track[1] in file:
-                os.rename(file, track[0]+" - "+track[1]+".mp3")
+            try:
+                ydl.download([f"ytsearch:{track[0]} - {track[1]}"])
+            except Exception as e:
+                print(e)
+                failed.append(track[0]+" - "+track[1])
+        for file in os.listdir():
+            if file == ".cache":
+                pass
+            elif file == "failed.txt":
+                pass
+            else:
+                os.rename(file, file[:-16]+".mp3")
+        print("Failed:")
+        print('\n'.join(failed))
+        open("failed.txt", "w").write('\n'.join(failed))
 
 def download_favourites_spotify():
     ydl_opts = {
@@ -101,6 +121,12 @@ def download_favourites_spotify():
         scope=scope
     ))
     os.chdir("output")
+    try:
+        for failed_track in open("failed.txt").read().split("\n"):
+            failed_info = failed_track.split(" - ")
+            track_info.append(failed_info)
+    except:
+        print("No failed songs were added")
     tracks = sp.current_user_saved_tracks()
     show_tracks(tracks)
 
@@ -108,13 +134,25 @@ def download_favourites_spotify():
         tracks = sp.next(tracks)
         show_tracks(tracks)
     
+    print(track_info)
+    
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        ydl.download(track_names)
-
-    for file in os.listdir():
         for track in track_info:
-            if track[1] in file:
-                os.rename(file, track[0]+" - "+track[1]+".mp3")
+            try:
+                ydl.download([f"ytsearch:{track[0]} - {track[1]}"])
+            except Exception as e:
+                print(e)
+                failed.append(track[0]+" - "+track[1])
+        for file in os.listdir():
+            if file == ".cache":
+                pass
+            elif file == "failed.txt":
+                pass
+            else:
+                os.rename(file, file[:-16]+".mp3")
+        print("Failed:")
+        print('\n'.join(failed))
+        open("failed.txt", "w").write('\n'.join(failed))
 
 
 code = input("Command: ")
